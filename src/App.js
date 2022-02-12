@@ -1,25 +1,24 @@
-import logo from './logo.svg';
 import './App.css';
 import React from 'react';
 import rawData from './data_result.json';
 import ColumnFilter from './ColumnFilter';
+import ColumnSort from './ColumnSort';
 
 function App() {
   let columnWidths = {}
   let [data, setData] = React.useState(null)
   let [filteredData, setFilteredData] = React.useState(null)
+  let [filters, setFilters] = React.useState({})
+  let [sort, setSort] = React.useState({})
 
   React.useEffect(() => {
     setData(rawData.EstablishmentScores)
   }, [rawData])
 
   const renderTable = (input) => {
-    console.log('rendering table?')
-
     let dataArray = []
     if(!Array.isArray(input)){
       for(const[key, value] of Object.entries(input)){
-        // console.log('got object key ', key)
         dataArray.push({"key": key, ...value})
       }
       setData(dataArray)
@@ -46,7 +45,6 @@ function App() {
     let minWidth = min;
     for(const row of rows){
       let cellValue = row[columnName]
-      //console.log('getting cellvalue for ', columnName)
       if(cellValue){
         let cellWidth = cellValue.toString().length
         if(cellWidth > minWidth){
@@ -74,7 +72,9 @@ function App() {
         {Object.keys(obj).map((v, i) => {
           return(
             <div key={`header_cell_${i}`} className="cell" style={{width: `${(columnWidths[v]*.55)}rem`}}>
-              {v}
+              <div style={{display: 'flex'}}>
+                {v} <ColumnSort onChange={onSortChange} name={v} value={sort.name === v ? sort.val : false} />
+              </div>
               <ColumnFilter onChange={onFilterChange} name={v} />
             </div>
           ) 
@@ -95,10 +95,47 @@ function App() {
   }
 
   const onFilterChange = (name, val) => {
-    setData(data.filter((v, i) => {
-      console.log(`filter ${JSON.stringify(v)} for ${name} and ${v[name]}`)
-      return v[name].toLowerCase().indexOf(val.toLowerCase()) > -1
-    }))
+    const newFilters = JSON.parse(JSON.stringify(filters))
+
+    newFilters[name] = val
+
+    setFilters(newFilters)
+
+    let newData = getFilteredData(data, newFilters)
+
+    setFilteredData(newData)
+  }
+
+  const getFilteredData = (dat, filtrs) => {
+    let newData = dat.map((v, i) => {
+      return v
+    })
+
+    for(const [key, value] of Object.entries(filtrs)){
+      newData = newData.filter((v, i) => {
+        return v[key].toString().toLowerCase().indexOf(value.toLowerCase()) > -1
+      })
+    }
+
+    return newData
+  }
+
+  const onSortChange = (name, val) => {
+    setSort({name, val})
+
+    let newData = getFilteredData(data, filters)
+
+    if(val){
+      newData = newData.sort((a, b) => {
+        if(val === "asc"){
+          return (a[name] < b[name]) ? 1 : -1
+        }else if(val === "desc"){
+          return (a[name] > b[name]) ? 1 : -1
+        }
+      })
+    }
+
+    setFilteredData(newData)
   }
 
   return (
